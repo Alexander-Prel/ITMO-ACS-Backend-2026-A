@@ -144,12 +144,15 @@ paths:
       tags:
         - Restaurants
       summary: Получить список ресторанов
-      description: Возвращает список ресторанов с фильтрацией по городу, кухне и ценовой категории.
+      description: Возвращает список ресторанов с поиском по названию, фильтрацией по городу, кухне и ценовой категории, а также сортировкой по цене или рейтингу.
       operationId: listRestaurants
       parameters:
+        - $ref: '#/components/parameters/RestaurantNameParam'
         - $ref: '#/components/parameters/CityParam'
         - $ref: '#/components/parameters/CuisineIdParam'
         - $ref: '#/components/parameters/PriceCategoryParam'
+        - $ref: '#/components/parameters/RestaurantSortByParam'
+        - $ref: '#/components/parameters/SortOrderParam'
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/LimitParam'
       responses:
@@ -471,6 +474,17 @@ components:
         maxLength: 100
       example: Москва
 
+    RestaurantNameParam:
+      name: name
+      in: query
+      required: false
+      description: Поиск ресторанов по части названия без учета регистра.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+      example: piazza
+
     CuisineIdParam:
       name: cuisine_id
       in: query
@@ -494,6 +508,31 @@ components:
           - medium
           - premium
       example: medium
+
+    RestaurantSortByParam:
+      name: sort_by
+      in: query
+      required: false
+      description: Поле сортировки. price_category сортирует по порядку budget, medium, premium; rating сортирует по среднему рейтингу ресторана.
+      schema:
+        type: string
+        enum:
+          - price_category
+          - rating
+      example: rating
+
+    SortOrderParam:
+      name: sort_order
+      in: query
+      required: false
+      description: Направление сортировки.
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+        default: desc
+      example: desc
 
     ReservationStatusParam:
       name: status
