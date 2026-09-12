@@ -17,34 +17,34 @@ export type PriceCategory = "budget" | "medium" | "premium";
 
 @Entity("restaurants")
 export class Restaurant {
-  @PrimaryGeneratedColumn({ name: "restaurant_id" })
+  @PrimaryGeneratedColumn({ name: "restaurant_id", type: "integer" })
   restaurantId!: number;
 
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   name!: string;
 
   @Column({ type: "text" })
   description!: string;
 
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   address!: string;
 
-  @Column({ length: 100 })
+  @Column({ type: "varchar", length: 100 })
   city!: string;
 
-  @Column({ name: "price_category", length: 20 })
+  @Column({ type: "varchar", name: "price_category", length: 20 })
   priceCategory!: PriceCategory;
 
-  @Column({ length: 32 })
+  @Column({ type: "varchar", length: 32 })
   phone!: string;
 
-  @Column({ name: "opening_time", length: 8 })
+  @Column({ type: "varchar", name: "opening_time", length: 8 })
   openingTime!: string;
 
-  @Column({ name: "closing_time", length: 8 })
+  @Column({ type: "varchar", name: "closing_time", length: 8 })
   closingTime!: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ type: "datetime", name: "created_at" })
   createdAt!: Date;
 
   @ManyToMany(() => Cuisine, (cuisine) => cuisine.restaurants)

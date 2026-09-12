@@ -4,7 +4,7 @@ import { User } from "./User";
 
 @Entity("reviews")
 export class Review {
-  @PrimaryGeneratedColumn({ name: "review_id" })
+  @PrimaryGeneratedColumn({ name: "review_id", type: "integer" })
   reviewId!: number;
 
   @ManyToOne(() => User, (user) => user.reviews, { onDelete: "CASCADE" })
@@ -15,12 +15,12 @@ export class Review {
   @JoinColumn({ name: "restaurant_id" })
   restaurant!: Restaurant;
 
-  @Column()
+  @Column({ type: "integer" })
   rating!: number;
 
   @Column({ type: "text" })
   comment!: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ type: "datetime", name: "created_at" })
   createdAt!: Date;
 }
