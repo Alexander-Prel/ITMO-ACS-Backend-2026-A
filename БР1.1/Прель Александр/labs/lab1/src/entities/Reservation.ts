@@ -6,7 +6,7 @@ export type ReservationStatus = "pending" | "confirmed" | "cancelled" | "complet
 
 @Entity("reservations")
 export class Reservation {
-  @PrimaryGeneratedColumn({ name: "reservation_id" })
+  @PrimaryGeneratedColumn({ name: "reservation_id", type: "integer" })
   reservationId!: number;
 
   @ManyToOne(() => User, (user) => user.reservations, { onDelete: "CASCADE" })
@@ -17,21 +17,21 @@ export class Reservation {
   @JoinColumn({ name: "table_id" })
   table!: RestaurantTable;
 
-  @Column({ name: "reservation_date", length: 10 })
+  @Column({ type: "varchar", name: "reservation_date", length: 10 })
   reservationDate!: string;
 
-  @Column({ name: "start_time", length: 8 })
+  @Column({ type: "varchar", name: "start_time", length: 8 })
   startTime!: string;
 
-  @Column({ name: "end_time", length: 8 })
+  @Column({ type: "varchar", name: "end_time", length: 8 })
   endTime!: string;
 
-  @Column({ name: "guests_count" })
+  @Column({ type: "integer", name: "guests_count" })
   guestsCount!: number;
 
-  @Column({ length: 20, default: "confirmed" })
+  @Column({ type: "varchar", length: 20, default: "confirmed" })
   status!: ReservationStatus;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ type: "datetime", name: "created_at" })
   createdAt!: Date;
 }

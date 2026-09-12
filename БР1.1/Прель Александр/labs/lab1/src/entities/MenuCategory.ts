@@ -4,14 +4,14 @@ import { Restaurant } from "./Restaurant";
 
 @Entity("menu_categories")
 export class MenuCategory {
-  @PrimaryGeneratedColumn({ name: "category_id" })
+  @PrimaryGeneratedColumn({ name: "category_id", type: "integer" })
   categoryId!: number;
 
   @ManyToOne(() => Restaurant, (restaurant) => restaurant.menuCategories, { onDelete: "CASCADE" })
   @JoinColumn({ name: "restaurant_id" })
   restaurant!: Restaurant;
 
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   name!: string;
 
   @OneToMany(() => MenuItem, (item) => item.category)

@@ -3,14 +3,14 @@ import { MenuCategory } from "./MenuCategory";
 
 @Entity("menu_items")
 export class MenuItem {
-  @PrimaryGeneratedColumn({ name: "item_id" })
+  @PrimaryGeneratedColumn({ name: "item_id", type: "integer" })
   itemId!: number;
 
   @ManyToOne(() => MenuCategory, (category) => category.items, { onDelete: "CASCADE" })
   @JoinColumn({ name: "category_id" })
   category!: MenuCategory;
 
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   name!: string;
 
   @Column({ type: "text", nullable: true })
@@ -19,6 +19,6 @@ export class MenuItem {
   @Column({ type: "decimal", precision: 10, scale: 2 })
   price!: number;
 
-  @Column({ name: "is_available", default: true })
+  @Column({ type: "boolean", name: "is_available", default: true })
   isAvailable!: boolean;
 }

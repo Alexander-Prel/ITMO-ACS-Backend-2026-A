@@ -3,10 +3,10 @@ import { Restaurant } from "./Restaurant";
 
 @Entity("cuisines")
 export class Cuisine {
-  @PrimaryGeneratedColumn({ name: "cuisine_id" })
+  @PrimaryGeneratedColumn({ name: "cuisine_id", type: "integer" })
   cuisineId!: number;
 
-  @Column({ unique: true, length: 100 })
+  @Column({ type: "varchar", unique: true, length: 100 })
   name!: string;
 
   @ManyToMany(() => Restaurant, (restaurant) => restaurant.cuisines)
