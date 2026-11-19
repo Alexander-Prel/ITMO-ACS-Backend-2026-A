@@ -106,6 +106,7 @@ jobs:
         run: |
           npm run setup
           npm run config:check
+          node scripts/compose.cjs pull rabbitmq
           npm run build
       - name: Test Lab 3 containers
         timeout-minutes: 8
