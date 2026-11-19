@@ -36,6 +36,17 @@ jobs:
           curl -fsS http://127.0.0.1:8080/ready > "$RUNNER_TEMP/ansible-evidence/ready.json"
           jq -e '.status == "ok" and (.services | length == 4)' "$RUNNER_TEMP/ansible-evidence/ready.json"
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/ansible-evidence/revision.txt"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify the Grafana dashboard against live data
+        env:
+          APP_ENV: /opt/itmo-booking/shared/.env.compose
+          MONITOR_EVIDENCE: ${{ runner.temp }}/ansible-evidence/monitor-evidence.json
+        run: |
+          export GRAFANA_PASSWORD=$(openssl rand -hex 24)
+          bash 'БР1.1/Прель Александр/labs/lab6/start.sh'
+          node 'БР1.1/Прель Александр/labs/lab6/verify.cjs'
       - name: Preserve both play recaps and readiness
         if: always()
         uses: actions/upload-artifact@v4
