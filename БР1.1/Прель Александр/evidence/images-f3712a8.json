@@ -1,0 +1,8 @@
+{
+  "accounts": "ghcr.io/alexander-prel/itmo-booking-accounts@sha256:0b77c14281b11486c28f7ae08c81cb450d761ad136d9128803398ed5436bbb5f",
+  "catalog": "ghcr.io/alexander-prel/itmo-booking-catalog@sha256:794a531c45492218b93e00d14b966fde64170c83260100c56c053823a80cb576",
+  "bookings": "ghcr.io/alexander-prel/itmo-booking-bookings@sha256:a76d700f7952c52f456199fcd318e13b4abed28cbfe5a7c55697307a91517df7",
+  "notifications": "ghcr.io/alexander-prel/itmo-booking-notifications@sha256:f6e7dc9f013288943b06fbe83ee4150b619bb5607c85e60932e6064f8950466e",
+  "gateway": "ghcr.io/alexander-prel/itmo-booking-gateway@sha256:fbfba0c87365ccc7dff40103ac733678c6a0fd20dbc6333514ad08ce3dd46424"
+}
+

@@ -1,0 +1,694 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts
+  namespace: booking-sem2
+spec:
+  clusterIP: None
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: accounts
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookings
+  namespace: booking-sem2
+spec:
+  clusterIP: None
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: bookings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: booking-sem2
+spec:
+  clusterIP: None
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: catalog
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: booking-sem2
+spec:
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: gateway
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications
+  namespace: booking-sem2
+spec:
+  clusterIP: None
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: notifications
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: booking-sem2
+spec:
+  clusterIP: None
+  ports:
+  - port: 5672
+    targetPort: 5672
+  selector:
+    app: rabbitmq
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: booking-sem2
+spec:
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: GATEWAY_PORT
+          value: "3000"
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: MESSAGING_ENABLED
+          value: "true"
+        image: ghcr.io/alexander-prel/itmo-booking-gateway@sha256:fbfba0c87365ccc7dff40103ac733678c6a0fd20dbc6333514ad08ce3dd46424
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+        name: gateway
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+        resources:
+          limits:
+            cpu: "1"
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 40
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app: gateway
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+      volumes:
+      - emptyDir: {}
+        name: tmp
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: accounts
+  namespace: booking-sem2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounts
+  serviceName: accounts
+  template:
+    metadata:
+      labels:
+        app: accounts
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: ACCOUNTS_PORT
+          value: "3000"
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: ACCOUNTS_DATABASE_PATH
+          value: /app/data/accounts.sqlite
+        - name: SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: SERVICE_KEY
+              name: booking-secrets
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: JWT_SECRET
+              name: booking-secrets
+        image: ghcr.io/alexander-prel/itmo-booking-accounts@sha256:0b77c14281b11486c28f7ae08c81cb450d761ad136d9128803398ed5436bbb5f
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+        name: accounts
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+        resources:
+          limits:
+            cpu: "1"
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 40
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /app/data
+          name: data
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - emptyDir: {}
+        name: tmp
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bookings
+  namespace: booking-sem2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookings
+  serviceName: bookings
+  template:
+    metadata:
+      labels:
+        app: bookings
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: BOOKINGS_PORT
+          value: "3000"
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: BOOKINGS_DATABASE_PATH
+          value: /app/data/bookings.sqlite
+        - name: SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: SERVICE_KEY
+              name: booking-secrets
+        - name: MESSAGING_ENABLED
+          value: "true"
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: RABBITMQ_PASSWORD
+              name: booking-secrets
+        - name: RABBITMQ_URL
+          value: amqp://itmo:$(RABBITMQ_PASSWORD)@rabbitmq:5672/itmo?heartbeat=2
+        - name: RABBITMQ_NAMESPACE
+          value: itmo.booking
+        image: ghcr.io/alexander-prel/itmo-booking-bookings@sha256:a76d700f7952c52f456199fcd318e13b4abed28cbfe5a7c55697307a91517df7
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+        name: bookings
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+        resources:
+          limits:
+            cpu: "1"
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 40
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /app/data
+          name: data
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - emptyDir: {}
+        name: tmp
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: catalog
+  namespace: booking-sem2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog
+  serviceName: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: CATALOG_PORT
+          value: "3000"
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: CATALOG_DATABASE_PATH
+          value: /app/data/catalog.sqlite
+        - name: SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: SERVICE_KEY
+              name: booking-secrets
+        image: ghcr.io/alexander-prel/itmo-booking-catalog@sha256:794a531c45492218b93e00d14b966fde64170c83260100c56c053823a80cb576
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+        name: catalog
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+        resources:
+          limits:
+            cpu: "1"
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 40
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /app/data
+          name: data
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - emptyDir: {}
+        name: tmp
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notifications
+  namespace: booking-sem2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifications
+  serviceName: notifications
+  template:
+    metadata:
+      labels:
+        app: notifications
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: NOTIFICATIONS_PORT
+          value: "3000"
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: NOTIFICATIONS_DATABASE_PATH
+          value: /app/data/notifications.sqlite
+        - name: SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: SERVICE_KEY
+              name: booking-secrets
+        - name: MESSAGING_ENABLED
+          value: "true"
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: RABBITMQ_PASSWORD
+              name: booking-secrets
+        - name: RABBITMQ_URL
+          value: amqp://itmo:$(RABBITMQ_PASSWORD)@rabbitmq:5672/itmo?heartbeat=2
+        - name: RABBITMQ_NAMESPACE
+          value: itmo.booking
+        image: ghcr.io/alexander-prel/itmo-booking-notifications@sha256:f6e7dc9f013288943b06fbe83ee4150b619bb5607c85e60932e6064f8950466e
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+        name: notifications
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+        resources:
+          limits:
+            cpu: "1"
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        startupProbe:
+          failureThreshold: 40
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /app/data
+          name: data
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - emptyDir: {}
+        name: tmp
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: booking-sem2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  serviceName: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: itmo
+        - name: RABBITMQ_DEFAULT_VHOST
+          value: itmo
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              key: RABBITMQ_PASSWORD
+              name: booking-secrets
+        image: rabbitmq:4.3.5-management@sha256:8cbda4973b3053f3e3f76f4c28edcad1802896aec5a6e781ebc23bf1eb8273aa
+        name: rabbitmq
+        ports:
+        - containerPort: 5672
+        readinessProbe:
+          periodSeconds: 10
+          tcpSocket:
+            port: 5672
+        resources:
+          limits:
+            cpu: "1"
+            memory: 768Mi
+          requests:
+            cpu: 150m
+            memory: 256Mi
+        startupProbe:
+          failureThreshold: 50
+          periodSeconds: 5
+          tcpSocket:
+            port: 5672
+        volumeMounts:
+        - mountPath: /var/lib/rabbitmq
+          name: data
+      enableServiceLinks: false
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway
+  namespace: booking-sem2
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway
+  namespace: booking-sem2
+spec:
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180
+  maxReplicas: 4
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 60
+        type: Utilization
+    type: Resource
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway
