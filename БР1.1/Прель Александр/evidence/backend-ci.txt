@@ -1,0 +1,31 @@
+2026-11-19T11:46:06.7843988Z ✔ six containers use private networking, isolated volumes and non-root production images (18671.91988ms)
+2026-11-19T11:46:07.2668253Z ✔ HTTP auth, profile, catalog, reviews, bookings and private notifications work across Docker DNS (480.249554ms)
+2026-11-19T11:46:07.4257031Z ✔ twelve concurrent HTTP requests cannot double-book a table in a container (159.255242ms)
+2026-11-19T11:46:08.1961302Z ✔ a crashed Node process is restarted by Docker without losing the reservation (768.286188ms)
+2026-11-19T11:46:20.2305220Z ✔ recreating all application containers preserves all four service databases (12031.371394ms)
+2026-11-19T11:46:25.2193435Z ✔ broker outage and Bookings restart preserve both outbox events until recovery (4992.095843ms)
+2026-11-19T11:46:34.2042028Z ✔ queued delivery survives replacing RabbitMQ while Notifications is stopped (8978.482775ms)
+2026-11-19T11:46:53.5617877Z ✔ compose down and up preserve named volumes and the original user data (19361.35835ms)
+2026-11-19T11:46:55.2144950Z ℹ tests 8
+2026-11-19T11:46:55.2145231Z ℹ suites 0
+2026-11-19T11:46:55.2145425Z ℹ pass 8
+2026-11-19T11:46:55.2145599Z ℹ fail 0
+2026-11-19T11:46:55.2145790Z ℹ cancelled 0
+2026-11-19T11:46:55.2146048Z ℹ skipped 0
+2026-11-19T11:46:55.2146242Z ℹ todo 0
+2026-11-19T11:46:55.2146474Z ℹ duration_ms 67137.589013
+2026-11-19T11:47:44.6295282Z ✔ only Nginx publishes a loopback port and the backend network remains private (23799.513815ms)
+2026-11-19T11:47:44.9357053Z ✔ Nginx serves health checks and the complete user booking flow (313.318169ms)
+2026-11-19T11:48:02.7203361Z ✔ manual redeployment recreates containers without losing application data (17788.301443ms)
+2026-11-19T11:48:04.4380001Z ℹ tests 3
+2026-11-19T11:48:04.4380271Z ℹ suites 0
+2026-11-19T11:48:04.4380464Z ℹ pass 3
+2026-11-19T11:48:04.4380652Z ℹ fail 0
+2026-11-19T11:48:04.4380868Z ℹ cancelled 0
+2026-11-19T11:48:04.4381073Z ℹ skipped 0
+2026-11-19T11:48:04.4381252Z ℹ todo 0
+2026-11-19T11:48:04.4381484Z ℹ duration_ms 43656.683259
+2026-11-19T11:48:10.3673225Z │              iterations │                 1 │                0 │
+2026-11-19T11:48:10.3674271Z │                requests │                29 │                0 │
+2026-11-19T11:48:10.3677993Z │              assertions │               117 │                0 │
+2026-11-19T11:48:49.8014477Z Grafana verified: 5 healthy services; CPU, RAM, disk, RX/TX; logs from 7 application containers; provisioned dashboard.

@@ -5,3 +5,5 @@ Workflow .github/workflows/backend-ci-cd.yml запускается при из�
 Переменная COURSE_VM_API_URL хранит адрес, доступный с runner. После деплоя workflow сохраняет внешний ready.json и revision.txt в vm-evidence. Для окружения production задаются DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS и при необходимости DEPLOY_PORT. Ключ сервера для known_hosts сверяют на учебной ВМ. Путь установки /opt/itmo-booking. Переменная репозитория ENABLE_REMOTE_DEPLOY=true включает job доставки. Секреты задаются через GitHub Environments.
 
 Проверка перед публикацией: node --test tests/workflow.test.cjs. Для приёмки нужен успешный запуск по push, SHA на ВМ и внешний GET /ready. Сохранённый TEST_RESULTS_2026-09-10.md описывает исходный локальный прогон сентября.
+
+[Backend CI/CD 44517314031](https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/actions/runs/44517314031) подтвердил цепочку quality → messaging → containers и мониторинг. Deploy-job явно пропущен до настройки ВМ. Подробности: [backend-final.json](../../evidence/backend-final.json).

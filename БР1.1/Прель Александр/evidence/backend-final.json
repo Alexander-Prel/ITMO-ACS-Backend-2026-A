@@ -1,0 +1,34 @@
+{
+  "revision": "ba82a4af2d7af4e792435a1ba7ff5a377f361c83",
+  "run": "https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/actions/runs/44517314031",
+  "environment": "Ephemeral GitHub-hosted Ubuntu 24.04",
+  "typescriptHttp": {
+    "passed": 28,
+    "failed": 0,
+    "job": 135536579497
+  },
+  "rabbitmq": {
+    "passed": 10,
+    "failed": 0,
+    "job": 135536821224
+  },
+  "compose": {
+    "passed": 8,
+    "failed": 0,
+    "job": 135537121183
+  },
+  "nginx": {
+    "passed": 3,
+    "failed": 0
+  },
+  "postman": {
+    "requests": 29,
+    "assertionsPassed": 117,
+    "assertionsFailed": 0
+  },
+  "smoke": "passed",
+  "npmAuditProductionVulnerabilities": 0,
+  "monitoring": "passed: CPU, RAM, disk, RX/TX, 5 healthy services and logs from 7 application containers",
+  "remoteSshDeploy": "skipped; no dedicated VM configured",
+  "ansibleRecheck": "https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/actions/runs/44517314412"
+}
