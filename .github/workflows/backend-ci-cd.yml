@@ -115,6 +115,20 @@ jobs:
           npm test
           npm run test:smoke
           npm run test:postman
+      - name: Start and verify monitoring on the Linux runner
+        env:
+          MONITOR_EVIDENCE: ${{ runner.temp }}/monitor-evidence.json
+        run: |
+          set -euo pipefail
+          export GRAFANA_PASSWORD=$(openssl rand -hex 24)
+          export APP_ENV="$PWD/$LAB4_DIR/.env.compose"
+          bash 'БР1.1/Прель Александр/labs/lab6/start.sh'
+          node 'БР1.1/Прель Александр/labs/lab6/verify.cjs'
+      - name: Upload monitoring verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: monitor-evidence
+          path: ${{ runner.temp }}/monitor-evidence.json
       - name: Print deployment logs on failure
         if: failure()
         working-directory: ${{ env.LAB4_DIR }}
