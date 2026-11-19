@@ -4,7 +4,7 @@ set -euo pipefail
 source /etc/os-release
 [[ "$ID:$VERSION_ID" == ubuntu:24.04 ]] || { echo "Ubuntu 24.04 required" >&2; exit 2; }
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl nginx openssl
+sudo apt-get install -y ca-certificates curl git nginx openssl
 sudo install -d -m 0755 /etc/apt/keyrings
 curl --fail --silent --show-error https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc >/dev/null
 sudo chmod 0644 /etc/apt/keyrings/docker.asc

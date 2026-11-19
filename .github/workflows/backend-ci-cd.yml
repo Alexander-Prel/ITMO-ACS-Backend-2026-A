@@ -7,6 +7,7 @@ on:
       - 'БР1.1/Прель Александр/labs/lab2/**'
       - 'БР1.1/Прель Александр/labs/lab3/**'
       - 'БР1.1/Прель Александр/labs/lab4/**'
+      - 'БР1.1/Прель Александр/labs/lab6/**'
       - 'БР1.1/Прель Александр/homeworks/hw6/**'
   push:
     branches: [semester-2-practice]
@@ -15,6 +16,7 @@ on:
       - 'БР1.1/Прель Александр/labs/lab2/**'
       - 'БР1.1/Прель Александр/labs/lab3/**'
       - 'БР1.1/Прель Александр/labs/lab4/**'
+      - 'БР1.1/Прель Александр/labs/lab6/**'
       - 'БР1.1/Прель Александр/homeworks/hw6/**'
 
 permissions:
@@ -22,7 +24,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ vars.ENABLE_REMOTE_DEPLOY != 'true' }}
 
 defaults:
   run:
@@ -98,20 +100,29 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Build and test Lab 3 containers
+      - name: Build Lab 3 containers
+        timeout-minutes: 10
         working-directory: ${{ env.LAB3_DIR }}
         run: |
           npm run setup
           npm run config:check
           npm run build
-          npm test
-      - name: Build and test the Nginx deployment
+      - name: Test Lab 3 containers
+        timeout-minutes: 8
+        working-directory: ${{ env.LAB3_DIR }}
+        run: npm test
+      - name: Build the Nginx deployment
+        timeout-minutes: 10
         working-directory: ${{ env.LAB4_DIR }}
         run: |
           npm run setup
           npm run config:check
           npm run build
           npm start
+      - name: Test Nginx and Postman
+        timeout-minutes: 8
+        working-directory: ${{ env.LAB4_DIR }}
+        run: |
           npm test
           npm run test:smoke
           npm run test:postman
