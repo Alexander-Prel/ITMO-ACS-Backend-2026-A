@@ -1,0 +1,26 @@
+{
+  "run": "https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/actions/runs/44516380844",
+  "job": 135533326090,
+  "revision": "13dc98f96fc2453bc1c5f62e956e5ba92df878f1",
+  "environment": "Ephemeral GitHub-hosted Ubuntu 24.04 VM; local Ansible connection",
+  "first": {
+    "ok": 25,
+    "changed": 15,
+    "unreachable": 0,
+    "failed": 0,
+    "skipped": 0
+  },
+  "second": {
+    "ok": 17,
+    "changed": 0,
+    "unreachable": 0,
+    "failed": 0,
+    "skipped": 6
+  },
+  "readyAssertion": "GET http://127.0.0.1:8080/ready: .status == \"ok\" and (.services | length == 4)",
+  "recaps": [
+    "2026-11-19T11:38:56.9496043Z localhost                  : ok=25   changed=15   unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   ",
+    "2026-11-19T11:39:06.2800282Z localhost                  : ok=17   changed=0    unreachable=0    failed=0    skipped=6    rescued=0    ignored=0   ",
+    "2026-11-19T11:39:06.3291074Z localhost                  : ok=17   changed=0    unreachable=0    failed=0    skipped=6    rescued=0    ignored=0   "
+  ]
+}

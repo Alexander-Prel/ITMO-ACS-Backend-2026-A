@@ -1,5 +1,7 @@
 """Render course reports from the versioned implementation notes and test evidence."""
 import re
+import json
+import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
 from reportlab.lib import colors
@@ -45,8 +47,8 @@ def par(t,st=body):
 specs=[
 ('labs/lab4','ЛР4','Ручное развёртывание на удалённом сервере','Подготовить удалённый сервер, развернуть приложение и предоставить доступ через обратный прокси Nginx.','Docker Compose принял конфигурацию. Проверены синтаксис Bash и повторное создание серверных настроек с сохранением исходных значений.','В сентябрьском протоколе зафиксированы локальные 7/7 healthy, 3/3 теста и 117/117 проверок Postman. Для завершения требуется внешний запрос к новой ВМ.'),
 ('homeworks/hw6','ДЗ6','Автоматическое развёртывание на ВМ','Настроить автодеплой по изменению выбранной ветки репозитория.','Семь тестов workflow прошли. Валидатор подтвердил структуру CI и синтаксис SSH-скрипта.','CI по push прошёл проверки TypeScript, HTTP и RabbitMQ. Ожидаются успешный SSH-деплой на ВМ и проверка внешнего адреса.'),
-('labs/lab5','ЛР5','Автоматизация настройки сервера в Ansible','Автоматизировать установку пакетов, настройку окружения и запуск сервисов на виртуальной машине.','Подготовлены inventory, playbook и обработчик reload Nginx. ansible-playbook --syntax-check прошёл на Ubuntu в GitHub Actions; генератор окружения дважды запущен в отдельном каталоге, значения сохранились.','Для завершения нужны два прогона Ansible на Ubuntu, строки PLAY RECAP, версия приложения и результат /ready.'),
-('labs/lab6','ЛР6','Мониторинг микросервисов и ресурсов ВМ','Настроить Grafana, вывести CPU, диск, RAM и сеть, доступность всех микросервисов и логи контейнеров.','Docker Compose принял конфигурацию. Сверены адреса пяти микросервисов, шесть панелей дашборда и запрос к Loki.','Для сдачи требуется запуск на Linux-ВМ и снимок фактических рядов, пяти проверок доступности и журналов.'),
+('labs/lab5','ЛР5','Автоматизация настройки сервера в Ansible','Автоматизировать установку пакетов, настройку окружения и запуск сервисов на виртуальной машине.','На Ubuntu 24.04 выполнены два playbook: первый ok=25, changed=15, failed=0; второй ok=17, changed=0, failed=0. Nginx вернул status=ok и четыре внутренних сервиса. Результат зафиксирован в evidence/ansible-run.json.','Конфигурация Ansible настроила реальную временную Ubuntu-ВМ и выдержала повторное применение без изменений. Для постоянного демонстрационного стенда её нужно применить к выделенному серверу.'),
+('labs/lab6','ЛР6','Мониторинг микросервисов и ресурсов ВМ','Настроить Grafana, вывести CPU, диск, RAM и сеть, доступность всех микросервисов и логи контейнеров.','На Ubuntu через Grafana получены реальные CPU, RAM, диск, RX/TX. Все пять микросервисов доступны, найдены логи семи контейнеров приложения и 21 поток Loki суммарно. Дашборд загружен автоматически.','Мониторинг настроен и проверен на работающей временной Ubuntu-ВМ. Фактические значения и запросы сохранены в evidence/monitor-evidence.json. Долговременный доступ к дашборду требует выделенного учебного сервера.'),
 ('homeworks/hw7','ДЗ7','Технический дизайн облачной инфраструктуры','Определить облачные ресурсы, схему сети, архитектурные решения и отказоустойчивость системы бронирования.','Сборка Kustomize дала 14 объектов. Проверены шесть сервисов, единственная внешняя точка входа, пять постоянных хранилищ и диапазон HPA 2–4. Назначения согласованы с конфигурацией приложения.','Технический дизайн выполнен. Указаны решения по сети и данным, ограничения одиночных компонентов, порядок восстановления и критерии приёмки облачного стенда.'),
 ('labs/lab7','ЛР7','Оркестрация приложения в облаке','Развернуть и оркестрировать микросервисы в облачной инфраструктуре по дизайну ДЗ7.','kubectl kustomize собрал манифесты. На реальных digest сборки f3712a8 проверена подстановка пяти конкретных образов в сохранённый release-f3712a8.yaml. У каждого сервиса проверена связь селектора и порта пода.','Для завершения нужны созданные облачные ресурсы, фактические digest, пять Bound PVC, готовые поды и ответ внешнего Gateway.'),
 ('homeworks/hw8','ДЗ8','CI/CD для облачной инфраструктуры','Реализовать непрерывную интеграцию и доставку микросервисов в целевое облако.','На Ubuntu прошли тесты и сборка всех пяти образов. Образы опубликованы в GHCR, digest сохранены в artifacts. Развёртывание ожидает подключения кластера.','Для сдачи необходим успешный GitHub Actions run с публикацией образов и доставкой в кластер.'),
@@ -106,15 +108,36 @@ def footer(canvas,doc):
     canvas.setFont('Course',9);canvas.setFillColor(muted)
     canvas.drawString(22*mm,12*mm,'Бэк-энд разработка  /  Прель Александр  /  БР1.1')
     canvas.drawRightString(A4[0]-22*mm,12*mm,str(doc.page))
+requested=set(sys.argv[1:])
+unknown=requested-{spec[1] for spec in specs}
+if unknown:raise SystemExit('Unknown report: '+', '.join(sorted(unknown)))
 for directory,identifier,name,task,verified,result in specs:
+    if requested and identifier not in requested:continue
     folder=root/directory
     outfile=folder/(identifier+'_Прель Александр_БР1.1.pdf')
     kind='Лабораторная работа' if identifier.startswith('ЛР') else 'Практическая работа'
     number=re.search(r'\d+',identifier).group()
     story=[Spacer(1,10*mm),par('САНКТ-ПЕТЕРБУРГСКИЙ НАЦИОНАЛЬНЫЙ\nИССЛЕДОВАТЕЛЬСКИЙ УНИВЕРСИТЕТ ИТМО',center),Spacer(1,22*mm),par('Дисциплина: Бэк-энд разработка',center),Spacer(1,17*mm),par('ОТЧЁТ',title),par(kind+' № '+number,center),Spacer(1,5*mm),par(name,title),Spacer(1,21*mm),par('Выполнил:\nПрель Александр\nГруппа БР1.1',right),Spacer(1,6*mm),par('Проверил:\nДобряков Д. И.',right),Spacer(1,18*mm),par('Санкт-Петербург\n2026 г.',center),PageBreak(),par('Задача',heading),par(task),par('Ход работы',heading)]
     if identifier=='ДЗ7':story.extend([scheme(),par('Рис. 1. Публичный запрос и внутренние сервисы приложения.',small)])
-    story.extend(read_notes((folder/'README.md').read_text()))
-    if identifier in extra:story.extend([par(extra[identifier][0],sub),par(extra[identifier][1])])
+    notes=(folder/'README.md').read_text()
+    if identifier=='ЛР6':notes='\n'.join(line for line in notes.splitlines() if not line.startswith('Проверено на временной Ubuntu-ВМ:'))
+    story.extend(read_notes(notes))
+    if identifier in extra and identifier!='ЛР6':story.extend([par(extra[identifier][0],sub),par(extra[identifier][1])])
+    if identifier=='ЛР6' and (root/'evidence/monitor-evidence.json').exists():
+        measured=json.loads((root/'evidence/monitor-evidence.json').read_text())
+        rows=['| Показатель | Фактическое значение |','| --- | --- |']
+        for panel in measured['resourcePanels']:
+            value=sum(float(sample['value'][1]) for sample in panel['samples'])
+            label=panel['title']
+            if 'node_cpu' in panel['query']:shown=f'{value:.2f} %'
+            elif 'node_network' in panel['query']:
+                label='Сеть RX' if 'receive' in panel['query'] else 'Сеть TX'
+                shown=f'{value:.2f} байт/с'
+            else:shown=f'{value / 1024**3:.3f} GiB'
+            rows.append(f'| {label} | {shown} |')
+        rows += [f"| Доступность сервисов | {len(measured['health'])}/5 |",f"| Контейнеры приложения с логами | {measured['applicationContainersWithLogs']}/7 |"]
+        story.extend([par('Фактические измерения Grafana',sub),par('Временная Ubuntu-ВМ GitHub Actions; время '+measured['utc']+'.',small)])
+        story.extend(read_notes('\n'.join(rows)))
     story.extend([KeepTogether([par('Результаты проверки',sub),par(verified)]),KeepTogether([par('Вывод',heading),par(result)]),par('Критерии и материалы',sub),par(f'[Условия задания]({course}) · [Шаблон отчёта]({template})',small),par('[Код и инструкция](https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/tree/semester-2-practice/БР1.1/Прель%20Александр/'+directory.replace(' ', '%20')+') · [Протокол запусков](https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/blob/semester-2-practice/БР1.1/Прель%20Александр/evidence/github-actions.md)',small)])
     doc=SimpleDocTemplate(str(outfile),pagesize=A4,title=name,author='Прель Александр',leftMargin=22*mm,rightMargin=22*mm,topMargin=18*mm,bottomMargin=24*mm)
     doc.build(story,onFirstPage=footer,onLaterPages=footer)

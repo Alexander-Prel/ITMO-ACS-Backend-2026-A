@@ -1,0 +1,130 @@
+{
+  "utc": "2026-11-19T11:39:39.922Z",
+  "environment": "GitHub Actions Ubuntu runner, ephemeral Linux VM",
+  "health": [
+    {
+      "instance": "http://gateway:3000/ready",
+      "value": 1
+    },
+    {
+      "instance": "http://bookings:3000/ready",
+      "value": 1
+    },
+    {
+      "instance": "http://catalog:3000/health",
+      "value": 1
+    },
+    {
+      "instance": "http://notifications:3000/ready",
+      "value": 1
+    },
+    {
+      "instance": "http://accounts:3000/health",
+      "value": 1
+    }
+  ],
+  "memoryBytes": 16760344576,
+  "logStreamCount": 21,
+  "applicationContainersWithLogs": 7,
+  "resourcePanels": [
+    {
+      "title": "CPU занят",
+      "query": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[2m])))",
+      "samples": [
+        {
+          "metric": {},
+          "value": [
+            1795088379.89,
+            "87.45238584674598"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Оперативная память занята",
+      "query": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+      "samples": [
+        {
+          "metric": {
+            "instance": "host.docker.internal:9100",
+            "job": "vm"
+          },
+          "value": [
+            1795088379.897,
+            "1844699136"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Занято на корневом разделе",
+      "query": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}",
+      "samples": [
+        {
+          "metric": {
+            "device": "/dev/root",
+            "fstype": "ext4",
+            "instance": "host.docker.internal:9100",
+            "job": "vm",
+            "mountpoint": "/"
+          },
+          "value": [
+            1795088379.903,
+            "66184339456"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Сеть ВМ, RX и TX",
+      "query": "sum by(device) (rate(node_network_receive_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[2m]))",
+      "samples": [
+        {
+          "metric": {
+            "device": "ens1"
+          },
+          "value": [
+            1795088379.909,
+            "52.65932470258922"
+          ]
+        },
+        {
+          "metric": {
+            "device": "eth0"
+          },
+          "value": [
+            1795088379.909,
+            "48.856610516844945"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Сеть ВМ, RX и TX",
+      "query": "sum by(device) (rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[2m]))",
+      "samples": [
+        {
+          "metric": {
+            "device": "ens1"
+          },
+          "value": [
+            1795088379.915,
+            "72.7188360158619"
+          ]
+        },
+        {
+          "metric": {
+            "device": "eth0"
+          },
+          "value": [
+            1795088379.915,
+            "71.80916141824119"
+          ]
+        }
+      ]
+    }
+  ],
+  "dashboardUid": "booking-vm",
+  "run": "https://github.com/Alexander-Prel/ITMO-ACS-Backend-2026-A/actions/runs/44516380844",
+  "revision": "13dc98f96fc2453bc1c5f62e956e5ba92df878f1"
+}
