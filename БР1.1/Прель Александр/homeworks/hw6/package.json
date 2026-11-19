@@ -1,0 +1,11 @@
+{
+  "name": "restaurant-booking-hw6",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitHub Actions CI/CD configuration and local validation",
+  "scripts": {
+    "validate": "node scripts/validate-workflow.cjs",
+    "test": "node --test tests/workflow.test.cjs",
+    "test:local-ci": "node scripts/local-ci.cjs"
+  }
+}

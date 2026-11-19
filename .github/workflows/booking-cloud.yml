@@ -1,0 +1,111 @@
+name: Booking cloud delivery
+on:
+  push:
+    branches: [semester-2-practice]
+    paths:
+      - 'БР1.1/Прель Александр/labs/lab2/**'
+      - 'БР1.1/Прель Александр/labs/lab3/docker/**'
+      - 'БР1.1/Прель Александр/labs/lab7/**'
+      - '.github/workflows/booking-cloud.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: booking-cloud
+  cancel-in-progress: false
+env:
+  STUDENT_DIR: БР1.1/Прель Александр
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check and test HTTP services
+        working-directory: ${{ env.STUDENT_DIR }}/labs/lab2
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run test:messaging
+  image:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [gateway, accounts, catalog, bookings, notifications]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Compute lowercase image name
+        id: name
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/itmo-booking-$SERVICE" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: ${{ env.STUDENT_DIR }}/labs/lab2
+          file: ${{ env.STUDENT_DIR }}/labs/lab3/docker/${{ matrix.service }}.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+      - name: Record image digest
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE: ${{ steps.name.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: jq -n --arg s "$SERVICE" --arg ref "$IMAGE@$DIGEST" '{($s):$ref}' > "$SERVICE.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.service }}
+          path: ${{ matrix.service }}.json
+  deploy:
+    if: vars.ENABLE_CLOUD_DEPLOY == 'true'
+    needs: image
+    environment: course-cloud
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: digests
+          merge-multiple: true
+      - name: Apply exact images and verify all rollouts
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          COURSE_API_URL: ${{ vars.COURSE_API_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export KUBECONFIG="$RUNNER_TEMP/course-kubeconfig"
+          trap 'rm -f "$KUBECONFIG"' EXIT
+          printf '%s' "$KUBE_CONFIG_DATA" | base64 -d > "$KUBECONFIG"
+          mkdir -p evidence
+          jq -s add digests/*.json > evidence/images.json
+          "$STUDENT_DIR/labs/lab7/render.sh" "$PWD/evidence/images.json" > evidence/release.yaml
+          kubectl apply -n booking-sem2 -f evidence/release.yaml
+          for app in rabbitmq accounts catalog bookings notifications; do
+            kubectl -n booking-sem2 rollout status "statefulset/$app" --timeout=6m
+          done
+          kubectl -n booking-sem2 rollout status deployment/gateway --timeout=6m
+          kubectl -n booking-sem2 get pods,pvc,svc,hpa -o wide > evidence/cluster.txt
+          curl -fsS --retry 8 --retry-all-errors --max-time 12 "${COURSE_API_URL%/}/ready" > evidence/ready.json
+          jq -e '.status == "ok" and (.services | length == 4)' evidence/ready.json
+          printf '%s\n' "$GITHUB_SHA" > evidence/revision.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloud-evidence-${{ github.sha }}
+          path: evidence/

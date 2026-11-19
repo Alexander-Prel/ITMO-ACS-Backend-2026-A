@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: booking-load
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  booking-load.json: "{\n  \"uid\": \"booking-load\",\n  \"title\": \"Booking · нагрузка\
+    \ и масштабирование\",\n  \"schemaVersion\": 39,\n  \"refresh\": \"10s\",\n  \"\
+    time\": {\n    \"from\": \"now-15m\",\n    \"to\": \"now\"\n  },\n  \"panels\"\
+    : [\n    {\n      \"id\": 1,\n      \"type\": \"timeseries\",\n      \"title\"\
+    : \"Фактические RPS\",\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\"\
+    : 0,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"datasource\": {\n\
+    \        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n\
+    \      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"expr\"\
+    : \"sum(rate(k6_http_reqs_total[1m]))\"\n        }\n      ],\n      \"fieldConfig\"\
+    : {\n        \"defaults\": {\n          \"unit\": \"reqps\"\n        },\n    \
+    \    \"overrides\": []\n      }\n    },\n    {\n      \"id\": 2,\n      \"type\"\
+    : \"timeseries\",\n      \"title\": \"HTTP p95 по операции\",\n      \"gridPos\"\
+    : {\n        \"x\": 12,\n        \"y\": 0,\n        \"w\": 12,\n        \"h\"\
+    : 8\n      },\n      \"datasource\": {\n        \"type\": \"prometheus\",\n  \
+    \      \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n  \
+    \        \"refId\": \"A\",\n          \"expr\": \"max by (name) (k6_http_req_duration_p95)\"\
+    \n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n   \
+    \       \"unit\": \"s\"\n        },\n        \"overrides\": []\n      }\n    },\n\
+    \    {\n      \"id\": 3,\n      \"type\": \"timeseries\",\n      \"title\": \"\
+    CPU по подам\",\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 8,\n\
+    \        \"w\": 12,\n        \"h\": 8\n      },\n      \"datasource\": {\n   \
+    \     \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n \
+    \     \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"expr\"\
+    : \"sum by(pod) (rate(container_cpu_usage_seconds_total{namespace=\\\"booking-sem2\\\
+    \",container!=\\\"\\\",container!=\\\"POD\\\"}[1m]))\"\n        }\n      ],\n\
+    \      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"cores\"\
+    \n        },\n        \"overrides\": []\n      }\n    },\n    {\n      \"id\"\
+    : 4,\n      \"type\": \"timeseries\",\n      \"title\": \"Доступные и требуемые\
+    \ реплики\",\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 8,\n  \
+    \      \"w\": 12,\n        \"h\": 8\n      },\n      \"datasource\": {\n     \
+    \   \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n   \
+    \   \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"expr\"\
+    : \"kube_deployment_status_replicas_available{namespace=\\\"booking-sem2\\\",deployment=\\\
+    \"gateway\\\"}\"\n        },\n        {\n          \"refId\": \"B\",\n       \
+    \   \"expr\": \"kube_horizontalpodautoscaler_status_desired_replicas{namespace=\\\
+    \"booking-sem2\\\",horizontalpodautoscaler=\\\"gateway\\\"}\"\n        }\n   \
+    \   ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\"\
+    : \"short\"\n        },\n        \"overrides\": []\n      }\n    },\n    {\n \
+    \     \"id\": 5,\n      \"type\": \"timeseries\",\n      \"title\": \"CPU throttling\
+    \ по подам\",\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 16,\n \
+    \       \"w\": 12,\n        \"h\": 8\n      },\n      \"datasource\": {\n    \
+    \    \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n  \
+    \    \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"expr\"\
+    : \"sum by(pod) (rate(container_cpu_cfs_throttled_periods_total{namespace=\\\"\
+    booking-sem2\\\"}[2m])) / clamp_min(sum by(pod) (rate(container_cpu_cfs_periods_total{namespace=\\\
+    \"booking-sem2\\\"}[2m])), 0.001)\"\n        }\n      ],\n      \"fieldConfig\"\
+    : {\n        \"defaults\": {\n          \"unit\": \"percentunit\"\n        },\n\
+    \        \"overrides\": []\n      }\n    }\n  ]\n}"

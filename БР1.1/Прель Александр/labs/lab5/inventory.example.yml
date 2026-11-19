@@ -1,0 +1,7 @@
+all:
+  children:
+    booking:
+      hosts:
+        course-vm:
+          ansible_host: vm.example.org
+          ansible_user: ubuntu

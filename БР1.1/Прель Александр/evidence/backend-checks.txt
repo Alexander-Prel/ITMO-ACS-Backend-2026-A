@@ -1,0 +1,27 @@
+
+> restaurant-table-booking-api@1.0.0 typecheck
+> tsc --noEmit
+
+
+> restaurant-table-booking-api@1.0.0 build
+> tsc -p tsconfig.json
+
+✔ Express and body-parser resolve qs with compatible parsing and safe round trips (22.769542ms)
+✔ Morgan escapes Unicode line separators in request log fields (0.224791ms)
+✔ event parser accepts both supported event types (1.61075ms)
+✔ event parser rejects invalid JSON and oversized messages (0.322417ms)
+✔ event parser rejects malformed envelopes (0.124583ms)
+✔ event parser validates every ID and name (0.619667ms)
+✔ event parser rejects invalid dates, times, intervals and status combinations (0.156958ms)
+✔ local mode remains loopback-only by default (0.495208ms)
+✔ compose mode permits only the matching service DNS name (0.152416ms)
+✔ broker addressing is restricted in both network modes (0.121375ms)
+✔ unknown network modes fail closed (0.075209ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.58825

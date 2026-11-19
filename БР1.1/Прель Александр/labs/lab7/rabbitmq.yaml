@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 5672
+    targetPort: 5672
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:4.3.5-management@sha256:8cbda4973b3053f3e3f76f4c28edcad1802896aec5a6e781ebc23bf1eb8273aa
+        ports:
+        - containerPort: 5672
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: itmo
+        - name: RABBITMQ_DEFAULT_VHOST
+          value: itmo
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: booking-secrets
+              key: RABBITMQ_PASSWORD
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/rabbitmq
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 768Mi
+        readinessProbe:
+          tcpSocket:
+            port: 5672
+          periodSeconds: 10
+        startupProbe:
+          tcpSocket:
+            port: 5672
+          periodSeconds: 5
+          failureThreshold: 50
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi

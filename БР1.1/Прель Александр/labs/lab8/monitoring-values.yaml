@@ -1,0 +1,10 @@
+grafana:
+  enabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: monitoring
+prometheus:
+  prometheusSpec:
+    enableRemoteWriteReceiver: true
+    retention: 2d

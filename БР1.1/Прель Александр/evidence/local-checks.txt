@@ -1,0 +1,41 @@
+2026-11-19T10:49:12Z
+
+$ python3 verify-semester.py
+Kubernetes: 14 objects, 6 services, 5 persistent workloads, 1 public Gateway; HPA 2–4.
+Monitoring: 5 microservice probes, 6 VM panels, 5 Kubernetes/load panels.
+openapi: 16 routes, all local references resolve.
+internal: 3 routes, all local references resolve.
+MkDocs source: 3 pages, local links resolve. Postman: 29 requests.
+
+$ node --test homeworks/hw6/tests/workflow.test.cjs
+✔ workflow is valid YAML and remote deployment script is valid Bash (95.883333ms)
+✔ CI covers locked install, build, tests, messaging and Compose (0.693459ms)
+✔ deployment is gated and SSH host verification cannot be bypassed (0.116584ms)
+✔ only commit-pinned official GitHub actions are referenced (0.483375ms)
+✔ local CI reproduces setup and command order from the workflow (0.081916ms)
+✔ remote deployment accepts only normalized absolute paths (18.058875ms)
+✔ remote deployment restricts ports to 1 through 65535 (17.274375ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.317542
+
+$ node homeworks/hw6/scripts/validate-workflow.cjs
+Workflow structure: OK
+Remote deploy shell syntax: OK
+
+$ docker compose config --quiet (ЛР4, ЛР6; temporary non-secret inputs)
+Both Compose configurations accepted (no daemon required).
+k6 inspect smoke: OK
+k6 inspect baseline: OK
+k6 inspect scale: OK
+k6 v1.7.1 (commit/devel, go1.26.1, darwin/arm64)
+Bash syntax passed for provisioning, VM, monitoring, cloud rendering and measurement.
+Release rendering: exact digest substitution verified for all five image placeholders (test fixture only).
+Repeat VM secret initialization preserves original values (temporary directory).
+
+Latest workflow regression: 2026-11-19T10:53:04+00:00

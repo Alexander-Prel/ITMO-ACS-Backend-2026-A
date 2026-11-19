@@ -1,0 +1,200 @@
+name: Backend CI/CD
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/backend-ci-cd.yml'
+      - 'БР1.1/Прель Александр/labs/lab2/**'
+      - 'БР1.1/Прель Александр/labs/lab3/**'
+      - 'БР1.1/Прель Александр/labs/lab4/**'
+      - 'БР1.1/Прель Александр/homeworks/hw6/**'
+  push:
+    branches: [semester-2-practice]
+    paths:
+      - '.github/workflows/backend-ci-cd.yml'
+      - 'БР1.1/Прель Александр/labs/lab2/**'
+      - 'БР1.1/Прель Александр/labs/lab3/**'
+      - 'БР1.1/Прель Александр/labs/lab4/**'
+      - 'БР1.1/Прель Александр/homeworks/hw6/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: 24.14.0
+  LAB2_DIR: 'БР1.1/Прель Александр/labs/lab2'
+  LAB3_DIR: 'БР1.1/Прель Александр/labs/lab3'
+  LAB4_DIR: 'БР1.1/Прель Александр/labs/lab4'
+  HW6_DIR: 'БР1.1/Прель Александр/homeworks/hw6'
+
+jobs:
+  quality:
+    name: TypeScript and HTTP tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.LAB2_DIR }}/package-lock.json
+      - name: Install locked dependencies
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm ci --include=dev
+      - name: Typecheck
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm run typecheck
+      - name: Build
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm run build
+      - name: Run HTTP and validation tests
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm test
+      - name: Audit production dependencies
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm audit --omit=dev
+
+  messaging:
+    name: RabbitMQ integration tests
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.LAB2_DIR }}/package-lock.json
+      - name: Install locked dependencies
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm ci --include=dev
+      - name: Run RabbitMQ failure scenarios
+        working-directory: ${{ env.LAB2_DIR }}
+        run: npm run test:messaging
+
+  containers:
+    name: Compose deployment tests
+    needs: [quality, messaging]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Build and test Lab 3 containers
+        working-directory: ${{ env.LAB3_DIR }}
+        run: |
+          npm run setup
+          npm run config:check
+          npm run build
+          npm test
+      - name: Build and test the Nginx deployment
+        working-directory: ${{ env.LAB4_DIR }}
+        run: |
+          npm run setup
+          npm run config:check
+          npm run build
+          npm start
+          npm test
+          npm run test:smoke
+          npm run test:postman
+      - name: Print deployment logs on failure
+        if: failure()
+        working-directory: ${{ env.LAB4_DIR }}
+        run: |
+          if [[ -f .env.compose ]]; then npm run status || true; npm run logs || true; fi
+      - name: Remove ephemeral runner resources
+        if: always()
+        run: |
+          if [[ -f "$LAB4_DIR/.env.compose" ]]; then (cd "$LAB4_DIR" && node scripts/compose.cjs down --volumes --timeout 15) || true; fi
+          if [[ -f "$LAB3_DIR/.env.compose" ]]; then (cd "$LAB3_DIR" && node scripts/compose.cjs down --volumes --timeout 15) || true; fi
+
+  deploy:
+    name: Deploy to the protected server
+    needs: containers
+    if: github.event_name == 'push' && github.ref == 'refs/heads/semester-2-practice' && vars.ENABLE_REMOTE_DEPLOY == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+      - name: Validate deployment settings
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${DEPLOY_HOST:?Missing DEPLOY_HOST}"
+          : "${DEPLOY_USER:?Missing DEPLOY_USER}"
+          : "${DEPLOY_PATH:?Missing DEPLOY_PATH}"
+          : "${DEPLOY_SSH_KEY:?Missing DEPLOY_SSH_KEY}"
+          : "${DEPLOY_KNOWN_HOSTS:?Missing DEPLOY_KNOWN_HOSTS}"
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          source "$HW6_DIR/scripts/remote-deploy.sh"
+          is_safe_absolute_path "$DEPLOY_PATH" || { echo 'Unsafe DEPLOY_PATH' >&2; exit 2; }
+          is_valid_port "$DEPLOY_PORT" || { echo 'Invalid DEPLOY_PORT' >&2; exit 2; }
+          install -m 700 -d "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/ssh/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/key" "$RUNNER_TEMP/ssh/known_hosts"
+      - name: Create immutable release archive
+        run: git archive --format=tar.gz --output="$RUNNER_TEMP/release.tar.gz" "$GITHUB_SHA"
+      - name: Transfer and activate the tested release
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          SSH=(ssh -i "$RUNNER_TEMP/ssh/key" -o BatchMode=yes -o IdentitiesOnly=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -p "$DEPLOY_PORT")
+          SCP=(scp -i "$RUNNER_TEMP/ssh/key" -o BatchMode=yes -o IdentitiesOnly=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -P "$DEPLOY_PORT")
+          TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
+          ARCHIVE="/tmp/itmo-backend-${GITHUB_SHA}.tar.gz"
+          "${SCP[@]}" "$RUNNER_TEMP/release.tar.gz" "$TARGET:$ARCHIVE"
+          printf -v REMOTE_COMMAND 'bash -s -- %q %q' "$DEPLOY_PATH" "$GITHUB_SHA"
+          "${SSH[@]}" "$TARGET" "$REMOTE_COMMAND" < "$HW6_DIR/scripts/remote-deploy.sh"
+      - name: Verify the remote version and API from the runner
+        env:
+          COURSE_VM_API_URL: ${{ vars.COURSE_VM_API_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p vm-evidence
+          printf '%s\n' "$GITHUB_SHA" > vm-evidence/revision.txt
+          curl --fail --silent --show-error --retry 4 --max-time 15 "${COURSE_VM_API_URL%/}/ready" > vm-evidence/ready.json
+          jq -e '.status == "ok" and (.services | length == 4)' vm-evidence/ready.json
+      - name: Save evidence for the VM report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vm-evidence-${{ github.sha }}
+          path: vm-evidence/
+      - name: Remove temporary SSH material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ssh/key" "$RUNNER_TEMP/ssh/known_hosts" "$RUNNER_TEMP/release.tar.gz"

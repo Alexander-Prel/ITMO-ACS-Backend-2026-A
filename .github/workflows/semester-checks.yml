@@ -1,0 +1,37 @@
+name: Verify semester coursework
+on:
+  push:
+    branches: [semester-2-practice]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: БР1.1/Прель Александр
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install validation tools
+        run: pip install -r homeworks/hw9/requirements.txt 'ansible-core>=2.17,<2.20'
+      - name: Build and verify documentation
+        run: |
+          python homeworks/hw9/build-contracts.py
+          git diff --exit-code -- homeworks/hw9/docs/downloads
+          mkdocs build --strict --config-file homeworks/hw9/mkdocs.yml --site-dir "$RUNNER_TEMP/booking-docs"
+          python verify-semester.py
+      - name: Check automation
+        run: |
+          ansible-playbook -i labs/lab5/inventory.example.yml labs/lab5/site.yml --syntax-check
+          node --test homeworks/hw6/tests/workflow.test.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: booking-mkdocs
+          path: ${{ runner.temp }}/booking-docs

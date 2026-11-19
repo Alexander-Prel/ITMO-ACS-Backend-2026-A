@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts
+spec:
+  selector:
+    app: accounts
+  ports:
+  - port: 3000
+    targetPort: 3000
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: accounts
+spec:
+  selector:
+    matchLabels: &id001
+      app: accounts
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: accounts
+        image: booking-accounts
+        ports:
+        - containerPort: 3000
+        env:
+        - name: APP_NETWORK_MODE
+          value: compose
+        - name: ACCOUNTS_PORT
+          value: '3000'
+        - name: ACCOUNTS_URL
+          value: http://accounts:3000
+        - name: CATALOG_URL
+          value: http://catalog:3000
+        - name: BOOKINGS_URL
+          value: http://bookings:3000
+        - name: NOTIFICATIONS_URL
+          value: http://notifications:3000
+        - name: ACCOUNTS_DATABASE_PATH
+          value: /app/data/accounts.sqlite
+        - name: SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: booking-secrets
+              key: SERVICE_KEY
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: booking-secrets
+              key: JWT_SECRET
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 96Mi
+          limits:
+            cpu: '1'
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 10
+          timeoutSeconds: 9
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 15
+          timeoutSeconds: 9
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          timeoutSeconds: 9
+          failureThreshold: 40
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: tmp
+        emptyDir: {}
+  replicas: 1
+  serviceName: accounts
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi

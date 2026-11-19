@@ -1,0 +1,10 @@
+site_name: Бронирование столиков
+site_description: Руководство разработчика и оператора учебного API
+theme:
+  name: mkdocs
+  locale: ru
+use_directory_urls: false
+nav:
+  - Обзор: index.md
+  - Работа с API: api.md
+  - Эксплуатация: operations.md

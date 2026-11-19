@@ -1,0 +1,140 @@
+---
+- name: Provision the dedicated booking VM and deploy the checked out revision
+  hosts: booking
+  become: true
+  vars:
+    app_root: /opt/itmo-booking
+    repository_root: "{{ playbook_dir }}/../../../.."
+  pre_tasks:
+    - name: Check supported distribution and deploy account
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu' and ansible_distribution_version == '24.04'
+          - ansible_user is defined and ansible_user != 'root'
+    - name: Resolve committed source tree on the control machine
+      ansible.builtin.command:
+        argv: [git, -C, "{{ repository_root }}", rev-parse, HEAD]
+      register: revision
+      delegate_to: localhost
+      become: false
+      changed_when: false
+  tasks:
+    - name: Install host prerequisites
+      ansible.builtin.apt:
+        name: [ca-certificates, curl, nginx, openssl]
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Create APT keyring directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    - name: Fetch official Docker signing key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+    - name: Enable Docker stable repository
+      ansible.builtin.apt_repository:
+        repo: deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable
+        filename: docker
+    - name: Install Docker engine and Compose
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+    - name: Start services on boot
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: [docker, nginx]
+    - name: Grant deployment account Docker access on the course VM
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+    - name: Create app directory
+      ansible.builtin.file:
+        path: "{{ app_root }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        mode: '0750'
+    - name: Install server environment generator
+      ansible.builtin.copy:
+        src: ../lab4/init-server-env.sh
+        dest: "{{ app_root }}/init-server-env.sh"
+        mode: '0755'
+    - name: Generate stable server settings once
+      become_user: "{{ ansible_user }}"
+      ansible.builtin.command:
+        argv: ["{{ app_root }}/init-server-env.sh", "{{ app_root }}"]
+        creates: "{{ app_root }}/shared/.env.compose"
+    - name: Configure external reverse proxy
+      ansible.builtin.copy:
+        src: ../lab4/nginx/host.conf
+        dest: /etc/nginx/conf.d/booking-lab.conf
+        mode: '0644'
+      notify: Reload validated nginx
+    - name: Apply proxy before validating it
+      ansible.builtin.meta: flush_handlers
+    - name: Read deployed revision
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current"
+      register: current
+    - name: Check running gateway
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/ready
+      failed_when: false
+      register: ready
+    - name: Transfer and deploy if revision or health differs
+      when: (current.stat.lnk_source | default('')) != app_root + '/releases/' + revision.stdout or ready.status != 200
+      block:
+        - name: Allocate local temporary archive
+          delegate_to: localhost
+          become: false
+          ansible.builtin.tempfile:
+            suffix: .tar.gz
+          register: archive
+        - name: Package committed tree
+          delegate_to: localhost
+          become: false
+          ansible.builtin.command:
+            argv: [git, -C, "{{ repository_root }}", archive, --format=tar.gz, "--output={{ archive.path }}", "{{ revision.stdout }}"]
+        - name: Upload release
+          ansible.builtin.copy:
+            src: "{{ archive.path }}"
+            dest: "/tmp/itmo-backend-{{ revision.stdout }}.tar.gz"
+            mode: '0600'
+            owner: "{{ ansible_user }}"
+        - name: Install deploy script
+          ansible.builtin.copy:
+            src: ../../homeworks/hw6/scripts/remote-deploy.sh
+            dest: "{{ app_root }}/deploy.sh"
+            mode: '0755'
+        - name: Activate containers
+          become_user: "{{ ansible_user }}"
+          ansible.builtin.command:
+            argv: [bash, "{{ app_root }}/deploy.sh", "{{ app_root }}", "{{ revision.stdout }}"]
+      always:
+        - name: Remove local temporary package
+          when: archive is defined and archive.path is defined
+          delegate_to: localhost
+          become: false
+          ansible.builtin.file:
+            path: "{{ archive.path }}"
+            state: absent
+    - name: Verify proxy response
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/ready
+        return_content: true
+      register: probe
+      failed_when: probe.status != 200 or probe.json.status != 'ok'
+  handlers:
+    - name: Validate nginx
+      listen: Reload validated nginx
+      ansible.builtin.command: nginx -t
+      changed_when: false
+    - name: Reload nginx
+      listen: Reload validated nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: reloaded
