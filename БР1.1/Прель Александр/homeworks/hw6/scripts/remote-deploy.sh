@@ -61,13 +61,19 @@ main() {
   cd "$LAB4_DIR"
   COMPOSE=(docker compose --project-name "$COMPOSE_PROJECT_NAME" --env-file .env.compose -f docker-compose.yml)
   "${COMPOSE[@]}" config --quiet
-  "${COMPOSE[@]}" build
+  build_release() {
+    local directory="$1"
+    # Keep the shared Dockerfile directory inside Bake's working directory.
+    (cd "$(dirname "$directory")" && docker compose --project-name "$COMPOSE_PROJECT_NAME" \
+      --env-file "$SHARED_CONFIG" -f "$directory/docker-compose.yml" build)
+  }
+  build_release "$LAB4_DIR"
   rollback() {
     local previous
     previous=$(readlink "$BASE_DIR/current" || true)
     if [[ "$previous" == "$BASE_DIR/releases/"* && "$previous" != "$RELEASE_DIR" && -d "$previous/$LAB4_RELATIVE" ]]; then
       (cd "$previous/$LAB4_RELATIVE" &&
-        "${COMPOSE[@]}" build &&
+        build_release "$previous/$LAB4_RELATIVE" &&
         "${COMPOSE[@]}" up --detach --wait --wait-timeout 120) || echo 'Rollback failed; inspect container logs' >&2
     fi
   }

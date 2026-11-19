@@ -1,10 +1,12 @@
+const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { root, binary, readConfig, composeArgs, childEnv } = require('./config.cjs');
 
 try {
   const config = readConfig();
   const child = spawn(binary, [...composeArgs(config), ...process.argv.slice(2)], {
-    cwd: root,
+    // Bake reads sibling production Dockerfiles under the common labs directory.
+    cwd: path.dirname(root),
     env: childEnv(config),
     stdio: 'inherit',
   });
