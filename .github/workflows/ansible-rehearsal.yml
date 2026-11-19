@@ -1,0 +1,41 @@
+name: Verify Ansible on Ubuntu VM
+on:
+  push:
+    branches: [semester-2-practice]
+    paths:
+      - '.github/workflows/ansible-rehearsal.yml'
+      - 'БР1.1/Прель Александр/labs/lab5/**'
+      - 'БР1.1/Прель Александр/labs/lab4/init-server-env.sh'
+      - 'БР1.1/Прель Александр/homeworks/hw6/scripts/remote-deploy.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rehearse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Ansible on the control machine
+        run: pip install 'ansible-core>=2.17,<2.20'
+      - name: Configure this disposable Ubuntu VM
+        run: |
+          mkdir -p "$RUNNER_TEMP/ansible-evidence"
+          printf '[booking]\nlocalhost ansible_connection=local ansible_user=%s\n' "$USER" > "$RUNNER_TEMP/inventory.ini"
+          ansible-playbook -i "$RUNNER_TEMP/inventory.ini" 'БР1.1/Прель Александр/labs/lab5/site.yml' | tee "$RUNNER_TEMP/ansible-evidence/first.log"
+      - name: Verify a second application changes nothing
+        run: |
+          ansible-playbook -i "$RUNNER_TEMP/inventory.ini" 'БР1.1/Прель Александр/labs/lab5/site.yml' | tee "$RUNNER_TEMP/ansible-evidence/second.log"
+          grep -E 'localhost.*changed=0.*unreachable=0.*failed=0' "$RUNNER_TEMP/ansible-evidence/second.log"
+          curl -fsS http://127.0.0.1:8080/ready > "$RUNNER_TEMP/ansible-evidence/ready.json"
+          jq -e '.status == "ok" and (.services | length == 4)' "$RUNNER_TEMP/ansible-evidence/ready.json"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/ansible-evidence/revision.txt"
+      - name: Preserve both play recaps and readiness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-evidence
+          path: ${{ runner.temp }}/ansible-evidence/
